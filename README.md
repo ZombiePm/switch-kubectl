@@ -24,6 +24,42 @@ switch.bat prod
 switch.bat 2
 ```
 
+## vswitch — Vault-based switcher
+
+Stores kubeconfigs in HashiCorp Vault (`secret/kube/<context-name>`) instead of local files.
+
+### Prerequisites
+
+- `vault` CLI in PATH
+- `VAULT_ADDR` environment variable set
+- Valid Vault token (via `vault login` or `VAULT_TOKEN`)
+- Vault policy with read/list/write on `secret/kube/*`
+
+### Usage
+
+```bash
+# Upload local configs to Vault (skip existing)
+vswitch.sh init
+
+# List configs from Vault (* = active)
+vswitch.sh
+
+# Switch by number
+vswitch.sh 2
+
+# Switch by name (partial match)
+vswitch.sh prod
+```
+
+### Windows
+
+```cmd
+vswitch.bat init
+vswitch.bat
+vswitch.bat 2
+vswitch.bat prod
+```
+
 ## How it works
 
 - Active config: `~/.kube/config`
