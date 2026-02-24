@@ -1,9 +1,48 @@
+# switch-kubectl
+
+Fast kubeconfig switcher. Stores configs as `~/.kube/config.<context-name>` and swaps them in/out of `~/.kube/config`.
+
+## Usage
+
+```bash
+# List available configs
+switch.sh
+
+# Switch by name (partial match)
+switch.sh twc
+switch.sh infolog
+
+# Switch by number
+switch.sh 2
+```
+
+### Windows
+
+```cmd
+switch.bat
+switch.bat twc
+switch.bat 2
+```
+
+## How it works
+
+- Active config: `~/.kube/config`
+- Inactive configs: `~/.kube/config.<context-name>` (e.g. `config.minikube`, `config.twc-dk`)
+- On switch: current config is saved by its context name, selected config becomes active
+
+## Install
+
+```bash
+# Linux/macOS
+cp switch.sh /usr/local/bin/switch-kubectl
+chmod +x /usr/local/bin/switch-kubectl
+
+# Windows — copy switch.bat somewhere in PATH
+```
 
 ---
 
-## ☕ Support
-
-Если проект оказался полезен:
+## Support
 
 | Network  | Address |
 |----------|---------|
