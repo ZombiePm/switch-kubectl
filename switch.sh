@@ -5,7 +5,7 @@
 #   switch.sh          — список доступных конфигов
 #   switch.sh <имя>    — переключиться на конфиг (частичное совпадение)
 
-config_dir="/root/.kube"
+config_dir="${HOME}/.kube"
 active="$config_dir/config"
 
 # Получить context name из kubeconfig файла

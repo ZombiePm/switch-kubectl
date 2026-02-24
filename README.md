@@ -9,8 +9,8 @@ Fast kubeconfig switcher. Stores configs as `~/.kube/config.<context-name>` and 
 switch.sh
 
 # Switch by name (partial match)
-switch.sh twc
-switch.sh infolog
+switch.sh prod
+switch.sh staging
 
 # Switch by number
 switch.sh 2
@@ -20,14 +20,14 @@ switch.sh 2
 
 ```cmd
 switch.bat
-switch.bat twc
+switch.bat prod
 switch.bat 2
 ```
 
 ## How it works
 
 - Active config: `~/.kube/config`
-- Inactive configs: `~/.kube/config.<context-name>` (e.g. `config.minikube`, `config.twc-dk`)
+- Inactive configs: `~/.kube/config.<context-name>` (e.g. `config.minikube`, `config.production`)
 - On switch: current config is saved by its context name, selected config becomes active
 
 ## Install
