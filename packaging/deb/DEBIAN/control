@@ -1,0 +1,20 @@
+Package: switch-kubectl
+Version: 1.0.0
+Section: admin
+Priority: optional
+Architecture: all
+Depends: kubectl
+Suggests: vault
+Maintainer: ZombiePm <https://github.com/ZombiePm>
+Homepage: https://github.com/ZombiePm/switch-kubectl
+Description: Fast kubeconfig context switcher with optional Vault integration
+ switch-kubectl provides two commands for managing multiple kubeconfig files:
+ .
+ switch-kubectl — switches between local kubeconfig files stored as
+ ~/.kube/config.<context-name>. On switch the current config is saved
+ by its context name and the selected one becomes active.
+ .
+ vswitch-kubectl — same workflow but kubeconfigs are stored in
+ HashiCorp Vault (secret/kube/<name>) instead of local files.
+ Supports listing, switching by number or partial name, and
+ bulk-uploading local configs into Vault.

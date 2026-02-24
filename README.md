@@ -1,54 +1,124 @@
 # switch-kubectl
 
-Fast kubeconfig switcher. Stores configs as `~/.kube/config.<context-name>` and swaps them in/out of `~/.kube/config`.
+Fast kubeconfig context switcher for teams managing multiple Kubernetes clusters.
 
-## Usage
+Provides two tools:
+
+- **switch** — switches between local kubeconfig files stored as `~/.kube/config.<context-name>`
+- **vswitch** — same workflow, but kubeconfigs are stored in [HashiCorp Vault](https://www.vaultproject.io/) (`secret/kube/<name>`) instead of local files
+
+Both tools support switching by number or partial name match, and work on Linux, macOS, and Windows.
+
+## Install from release
+
+### Debian / Ubuntu
+
+```bash
+# Download the .deb package from the latest release
+wget https://github.com/ZombiePm/switch-kubectl/releases/latest/download/switch-kubectl_1.0.0_all.deb
+sudo dpkg -i switch-kubectl_1.0.0_all.deb
+```
+
+This installs `switch-kubectl` and `vswitch-kubectl` into `/usr/local/bin/`.
+
+### Windows
+
+1. Download `switch-kubectl_1.0.0_windows.zip` from the [latest release](https://github.com/ZombiePm/switch-kubectl/releases/latest)
+2. Extract the archive
+3. Run `install.bat` — it copies `switch.bat` and `vswitch.bat` to `%USERPROFILE%\bin\`
+4. If `%USERPROFILE%\bin` is not in your PATH, the installer will show the command to add it
+
+### Manual install
+
+```bash
+# Linux/macOS — copy scripts to any directory in PATH
+cp switch.sh /usr/local/bin/switch-kubectl
+cp vswitch.sh /usr/local/bin/vswitch-kubectl
+chmod +x /usr/local/bin/switch-kubectl /usr/local/bin/vswitch-kubectl
+
+# Windows — copy .bat files to any directory in PATH
+```
+
+## switch — local kubeconfig switcher
+
+Manages kubeconfigs stored as local files (`~/.kube/config.*`).
+
+### How it works
+
+- Active config: `~/.kube/config`
+- Inactive configs: `~/.kube/config.<context-name>` (e.g. `config.my-cluster`, `config.staging`)
+- On switch: current config is saved by its context name, selected config becomes active
+
+### Usage
 
 ```bash
 # List available configs
-switch.sh
+switch-kubectl
 
 # Switch by name (partial match)
-switch.sh prod
-switch.sh staging
+switch-kubectl staging
 
 # Switch by number
-switch.sh 2
+switch-kubectl 2
+```
+
+Example output:
+
+```
+Available kubeconfig:
+
+  1) my-cluster
+  2) staging
+  3) production
+
+Active: my-cluster
 ```
 
 ### Windows
 
 ```cmd
 switch.bat
-switch.bat prod
+switch.bat staging
 switch.bat 2
 ```
 
-## vswitch — Vault-based switcher
+## vswitch — Vault-based kubeconfig switcher
 
-Stores kubeconfigs in HashiCorp Vault (`secret/kube/<context-name>`) instead of local files.
+Stores kubeconfigs in HashiCorp Vault (`secret/kube/<context-name>`) instead of local files. Useful for teams that centralize secrets in Vault.
 
 ### Prerequisites
 
 - `vault` CLI in PATH
 - `VAULT_ADDR` environment variable set
 - Valid Vault token (via `vault login` or `VAULT_TOKEN`)
-- Vault policy with read/list/write on `secret/kube/*`
+- Vault policy with read/list/write access to `secret/kube/*`
 
 ### Usage
 
 ```bash
-# Upload local configs to Vault (skip existing)
-vswitch.sh init
+# Upload local configs to Vault (skips already existing)
+vswitch-kubectl init
 
-# List configs from Vault (* = active)
-vswitch.sh
+# List configs stored in Vault (* marks active)
+vswitch-kubectl
 
 # Switch by number
-vswitch.sh 2
+vswitch-kubectl 2
 
 # Switch by name (partial match)
-vswitch.sh prod
+vswitch-kubectl prod
+```
+
+Example output:
+
+```
+Configs in Vault:
+
+  1) my-cluster  *
+  2) staging
+  3) production
+
+Active: my-cluster
 ```
 
 ### Windows
@@ -60,21 +130,28 @@ vswitch.bat 2
 vswitch.bat prod
 ```
 
-## How it works
+### Vault storage layout
 
-- Active config: `~/.kube/config`
-- Inactive configs: `~/.kube/config.<context-name>` (e.g. `config.minikube`, `config.production`)
-- On switch: current config is saved by its context name, selected config becomes active
+Each kubeconfig is stored as a single field in Vault KV (v1):
 
-## Install
+```
+secret/kube/my-cluster     → kubeconfig=<full kubeconfig YAML>
+secret/kube/staging         → kubeconfig=<full kubeconfig YAML>
+secret/kube/production      → kubeconfig=<full kubeconfig YAML>
+```
+
+The `init` command reads context names from existing local files and uploads them to Vault if not already present.
+
+## Building packages
 
 ```bash
-# Linux/macOS
-cp switch.sh /usr/local/bin/switch-kubectl
-chmod +x /usr/local/bin/switch-kubectl
-
-# Windows — copy switch.bat somewhere in PATH
+# Build .deb and Windows .zip into dist/
+./build.sh
 ```
+
+## License
+
+GPL-2.0
 
 ---
 

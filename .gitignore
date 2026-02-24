@@ -1,0 +1,4 @@
+dist/
+packaging/deb/usr/
+packaging/win/switch.bat
+packaging/win/vswitch.bat
