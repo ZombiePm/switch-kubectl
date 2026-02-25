@@ -6,6 +6,7 @@ REM Usage:
 REM   vswitch.bat              - list configs from Vault
 REM   vswitch.bat <number>     - switch by number
 REM   vswitch.bat <name>       - switch by partial name
+REM   vswitch.bat <num/name> <newname> - rename config in Vault
 REM   vswitch.bat init         - upload local configs to Vault
 
 set "ACTIVE=%USERPROFILE%\.kube\config"
@@ -28,6 +29,10 @@ if "%~1"=="" (
 if "%~1"=="init" (
     call :init_configs
     exit /b 0
+)
+if not "%~2"=="" (
+    call :rename_config "%~1" "%~2"
+    exit /b !errorlevel!
 )
 call :switch_to "%~1"
 exit /b !errorlevel!
@@ -63,16 +68,14 @@ if defined current_ctx (
 )
 exit /b 0
 
-:switch_to
+:find_config
 set "target=%~1"
 set "match="
 set /a matches=0
 
-REM Collect names into temp file
 set "tmpnames=%TEMP%\vswitch_names.tmp"
 vault kv list -format=json secret/kube 2>nul | python -c "import sys,json;[print(x) for x in json.load(sys.stdin)]" 2>nul > "%tmpnames%"
 
-REM Check if empty
 for %%A in ("%tmpnames%") do (
     if %%~zA equ 0 (
         echo No configs in Vault ^(secret/kube/^)
@@ -81,7 +84,6 @@ for %%A in ("%tmpnames%") do (
     )
 )
 
-REM Try as number first
 set "is_num=1"
 for /f "delims=0123456789" %%a in ("%target%") do set "is_num=0"
 if "%is_num%"=="1" (
@@ -95,7 +97,6 @@ if "%is_num%"=="1" (
     )
 )
 
-REM If not found by number, search by partial name
 if !matches! equ 0 (
     for /f "delims=" %%n in (%tmpnames%) do (
         echo %%n | findstr /i "%target%" >nul 2>&1
@@ -118,6 +119,11 @@ if !matches! gtr 1 (
     echo Ambiguous, found !matches! matches for '%target%'
     exit /b 1
 )
+exit /b 0
+
+:switch_to
+call :find_config "%~1"
+if errorlevel 1 exit /b 1
 
 REM Check if already active
 if exist "%ACTIVE%" (
@@ -137,6 +143,52 @@ if errorlevel 1 (
 )
 
 echo !match!
+exit /b 0
+
+:rename_config
+call :find_config "%~1"
+if errorlevel 1 exit /b 1
+
+set "old_name=!match!"
+set "new_name=%~2"
+
+if "!old_name!"=="!new_name!" (
+    echo Name unchanged: !old_name!
+    exit /b 0
+)
+
+REM Check if new name already exists
+set "tmpcheck=%TEMP%\vswitch_check.tmp"
+vault kv list -format=json secret/kube 2>nul | python -c "import sys,json;[print(x) for x in json.load(sys.stdin)]" 2>nul > "%tmpcheck%"
+for /f "delims=" %%n in (%tmpcheck%) do (
+    if "%%n"=="!new_name!" (
+        echo Name '!new_name!' already exists in Vault
+        del "%tmpcheck%" 2>nul
+        exit /b 1
+    )
+)
+del "%tmpcheck%" 2>nul
+
+REM Copy data to new key
+vault kv get -field=kubeconfig "secret/kube/!old_name!" > "%TEMP%\vswitch_data.tmp" 2>nul
+if errorlevel 1 (
+    echo Error reading secret/kube/!old_name!
+    del "%TEMP%\vswitch_data.tmp" 2>nul
+    exit /b 1
+)
+
+vault kv put "secret/kube/!new_name!" kubeconfig=@"%TEMP%\vswitch_data.tmp" >nul 2>&1
+if errorlevel 1 (
+    echo Error writing secret/kube/!new_name!
+    del "%TEMP%\vswitch_data.tmp" 2>nul
+    exit /b 1
+)
+del "%TEMP%\vswitch_data.tmp" 2>nul
+
+REM Delete old key
+vault kv delete "secret/kube/!old_name!" >nul 2>&1
+
+echo !old_name! -^> !new_name!
 exit /b 0
 
 :init_configs

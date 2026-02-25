@@ -107,6 +107,10 @@ vswitch-kubectl 2
 
 # Switch by name (partial match)
 vswitch-kubectl prod
+
+# Rename a config in Vault
+vswitch-kubectl 1 my-new-name
+vswitch-kubectl old-name new-name
 ```
 
 Example output:
