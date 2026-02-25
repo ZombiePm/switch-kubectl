@@ -169,24 +169,39 @@ for /f "delims=" %%n in (%tmpcheck%) do (
 )
 del "%tmpcheck%" 2>nul
 
-REM Copy data to new key
-vault kv get -field=kubeconfig "secret/kube/!old_name!" > "%TEMP%\vswitch_data.tmp" 2>nul
+REM Download to temp file
+set "tmpdata=%TEMP%\vswitch_data.tmp"
+vault kv get -field=kubeconfig "secret/kube/!old_name!" > "%tmpdata%" 2>nul
 if errorlevel 1 (
     echo Error reading secret/kube/!old_name!
-    del "%TEMP%\vswitch_data.tmp" 2>nul
+    del "%tmpdata%" 2>nul
     exit /b 1
 )
 
-vault kv put "secret/kube/!new_name!" kubeconfig=@"%TEMP%\vswitch_data.tmp" >nul 2>&1
+REM Rename context inside YAML
+for /f "delims=" %%c in ('kubectl --kubeconfig="%tmpdata%" config current-context 2^>nul') do set "old_ctx=%%c"
+if defined old_ctx (
+    kubectl --kubeconfig="%tmpdata%" config rename-context "!old_ctx!" "!new_name!" >nul 2>&1
+)
+
+REM Upload to new key
+vault kv put "secret/kube/!new_name!" kubeconfig=@"%tmpdata%" >nul 2>&1
 if errorlevel 1 (
     echo Error writing secret/kube/!new_name!
-    del "%TEMP%\vswitch_data.tmp" 2>nul
+    del "%tmpdata%" 2>nul
     exit /b 1
 )
-del "%TEMP%\vswitch_data.tmp" 2>nul
 
 REM Delete old key
 vault kv delete "secret/kube/!old_name!" >nul 2>&1
+
+REM Update active config if it was renamed
+if exist "%ACTIVE%" (
+    for /f "delims=" %%c in ('kubectl config current-context 2^>nul') do set "act_ctx=%%c"
+    if "!act_ctx!"=="!old_ctx!" copy /y "%tmpdata%" "%ACTIVE%" >nul
+)
+
+del "%tmpdata%" 2>nul
 
 echo !old_name! -^> !new_name!
 exit /b 0

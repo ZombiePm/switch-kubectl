@@ -166,23 +166,44 @@ rename_config() {
         return 1
     fi
 
-    # Копируем данные в новый ключ
-    local data
-    data=$(vault kv get -field=kubeconfig "secret/kube/$old_name" 2>/dev/null)
+    # Скачиваем во временный файл
+    local tmpfile
+    tmpfile=$(mktemp)
+    vault kv get -field=kubeconfig "secret/kube/$old_name" > "$tmpfile" 2>/dev/null
     if [[ $? -ne 0 ]]; then
         echo "Ошибка чтения secret/kube/$old_name"
+        rm -f "$tmpfile"
         return 1
     fi
 
-    echo "$data" | vault kv put "secret/kube/$new_name" kubeconfig=- >/dev/null
+    # Переименовываем context внутри YAML
+    local old_ctx
+    old_ctx=$(kubectl --kubeconfig="$tmpfile" config current-context 2>/dev/null)
+    if [[ -n "$old_ctx" ]]; then
+        kubectl --kubeconfig="$tmpfile" config rename-context "$old_ctx" "$new_name" >/dev/null 2>&1
+    fi
+
+    # Загружаем в новый ключ
+    vault kv put "secret/kube/$new_name" kubeconfig=@"$tmpfile" >/dev/null
     if [[ $? -ne 0 ]]; then
         echo "Ошибка записи secret/kube/$new_name"
+        rm -f "$tmpfile"
         return 1
     fi
 
     # Удаляем старый ключ
     vault kv delete "secret/kube/$old_name" >/dev/null 2>&1
 
+    # Обновляем активный конфиг если он был переименован
+    if [[ -f "$active" ]]; then
+        local active_ctx
+        active_ctx=$(kubectl config current-context 2>/dev/null)
+        if [[ "$active_ctx" == "$old_ctx" ]]; then
+            cp "$tmpfile" "$active"
+        fi
+    fi
+
+    rm -f "$tmpfile"
     echo "$old_name -> $new_name"
 }
 
